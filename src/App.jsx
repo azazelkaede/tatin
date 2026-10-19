@@ -160,7 +160,7 @@ function App() {
         <div className="absolute bottom-0 right-0 w-16 h-1 bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]"></div>
         <div className="absolute bottom-0 right-0 w-1 h-16 bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]"></div>
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white tracking-[0.2em] uppercase mb-1">STARK <span className="text-orange-500">IND.</span></h1>
+          <h1 className="text-3xl font-bold text-white tracking-[0.2em] uppercase mb-1">WIT <span className="text-orange-500">ENROLL</span></h1>
           <p className="text-orange-400 font-mono text-xs tracking-widest uppercase">{subtitle}</p>
         </div>
         {children}
@@ -224,7 +224,7 @@ function App() {
     };
 
     return (
-      <AuthContainer subtitle="Mainframe Authorization">
+      <AuthContainer subtitle="WIT STUDENT LOG IN">
         <div className="space-y-5 font-mono">
           {loginMessage && (
             <div className={`p-2 text-center text-xs border ${loginMessage.includes('ERROR') || loginMessage.includes('OFFLINE') ? 'border-red-500 text-red-400 bg-red-900/40' : 'border-orange-500 text-orange-400 bg-orange-900/40'}`}>
