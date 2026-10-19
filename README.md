@@ -17,6 +17,8 @@ The repository includes `render.yaml` for a free Render static site. In the Rend
 
 This deploys only the frontend: Render publishes `dist`, not the `backend/` PHP files. Login, registration, enrollment submissions, and photo storage still need a separately hosted PHP API. Do not enter real student information into the preview.
 
+For the PHP API and MySQL setup, see [backend/README.md](backend/README.md).
+
 ## Deploy the frontend to Vercel
 
 Import this repository in Vercel and set the project root to `enrollment-system` if the repository contains this folder as a subdirectory. Vercel detects Vite automatically; the build command is `npm run build` and the output directory is `dist`.
