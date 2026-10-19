@@ -1,5 +1,28 @@
 import React, { useState, useEffect } from 'react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '') ||
+  (import.meta.env.DEV ? '/api' : '');
+const API_CONFIGURED = Boolean(API_BASE_URL);
+
+async function requestApi(path, options) {
+  if (!API_CONFIGURED) {
+    throw new Error('Student services are not connected. Your information was not submitted.');
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, options);
+  } catch {
+    throw new Error('Could not reach student services. Check that the PHP API is deployed and available.');
+  }
+
+  try {
+    return { response, result: await response.json() };
+  } catch {
+    throw new Error('Student services returned an invalid response. Check the API URL and deployment.');
+  }
+}
+
 function App() {
   // SECURE DEFAULT: Now starts on 'login' instead of 'dashboard'
   const [currentView, setCurrentView] = useState('login');
@@ -77,13 +100,12 @@ function App() {
     setTransmitStatus('transmitting');
     setTransmitMessage('');
     try {
-      const response = await fetch('/api/enroll.php', {
+      const { response, result } = await requestApi('/enroll.php', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjects: cart.map((subject) => subject.code) }),
       });
-      const result = await response.json();
       if (!response.ok || result.status !== 'success') {
         throw new Error(result.message || 'Enrollment could not be saved.');
       }
@@ -102,7 +124,7 @@ function App() {
 
   const handleLogoutConfirm = async () => {
     try {
-      await fetch('/api/logout.php', { method: 'POST', credentials: 'include' });
+      await requestApi('/logout.php', { method: 'POST', credentials: 'include' });
     } catch (error) {
       console.error('Logout request failed:', error);
     }
@@ -130,13 +152,12 @@ function App() {
     const formData = new FormData();
     formData.append('photo', file);
     setPhotoMessage('Saving photo...');
-    fetch('/api/profile-photo.php', {
+    requestApi('/profile-photo.php', {
       method: 'POST',
       credentials: 'include',
       body: formData,
     })
-      .then(async (response) => {
-        const result = await response.json();
+      .then(({ response, result }) => {
         if (!response.ok || result.status !== 'success') {
           throw new Error(result.message || 'Could not save the photo.');
         }
@@ -178,13 +199,12 @@ function App() {
     const handleLogin = async () => {
       setLoginMessage('Verifying credentials...');
       try {
-        const response = await fetch('/api/login.php', {
+        const { response, result } = await requestApi('/login.php', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(loginData)
         });
-        const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Login request failed.');
         
         if (result.status === 'success') {
@@ -202,8 +222,7 @@ function App() {
           setProfileImage(null);
           setPhotoMessage('');
           try {
-            const photoResponse = await fetch('/api/profile-photo.php', { credentials: 'include' });
-            const photoResult = await photoResponse.json();
+            const { response: photoResponse, result: photoResult } = await requestApi('/profile-photo.php', { credentials: 'include' });
             if (!photoResponse.ok) throw new Error(photoResult.message || 'Photo lookup failed.');
             if (photoResult.dataUrl) {
               setProfileImage(photoResult.dataUrl);
@@ -222,6 +241,16 @@ function App() {
         setLoginMessage(`LOGIN FAILED: ${error.message || 'Could not reach the API. Check Apache and the browser console.'}`);
       }
     };
+
+    if (!API_CONFIGURED) {
+      return (
+        <AuthContainer subtitle="WIT STUDENT LOG IN">
+          <div role="status" className="border border-orange-500/60 bg-black/40 p-4 text-center font-mono text-xs leading-relaxed text-orange-200">
+            Student login is unavailable because this static site is not connected to the secure PHP API and database. No credentials were submitted or stored.
+          </div>
+        </AuthContainer>
+      );
+    }
 
     return (
       <AuthContainer subtitle="WIT STUDENT LOG IN">
@@ -268,13 +297,12 @@ function App() {
       if (!isPasswordValid) return; 
       
       try {
-        const response = await fetch('/api/register.php', {
+        const { response, result } = await requestApi('/register.php', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
-        const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Registration request failed.');
         if (result.status === 'success') {
           setServerMessage("CLEARANCE GRANTED.");
@@ -287,6 +315,19 @@ function App() {
         setServerMessage(`REGISTRATION FAILED: ${error.message || 'Could not reach the API. Check Apache and the browser console.'}`);
       }
     };
+
+    if (!API_CONFIGURED) {
+      return (
+        <AuthContainer subtitle="Student Registration">
+          <div role="status" className="border border-orange-500/60 bg-black/40 p-4 text-center font-mono text-xs leading-relaxed text-orange-200">
+            Student registration is unavailable because this static site is not connected to the secure PHP API and database. Your details were not submitted or stored.
+          </div>
+          <button onClick={() => setCurrentView('login')} className="mt-5 w-full text-xs text-orange-400 hover:text-orange-300 underline underline-offset-4">
+            Return to WIT Log In
+          </button>
+        </AuthContainer>
+      );
+    }
 
     return (
       <AuthContainer subtitle="Student Registration">
