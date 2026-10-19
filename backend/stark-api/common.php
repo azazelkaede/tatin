@@ -5,11 +5,40 @@ function api_init(): void
 {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
+
+    $allowedOrigin = rtrim(trim(getenv('STARK_ALLOWED_ORIGIN') ?: ''), '/');
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if ($allowedOrigin !== '' && $origin !== '') {
+        if (!hash_equals($allowedOrigin, $origin)) {
+            respond(403, ['status' => 'error', 'message' => 'This website is not allowed to use the API.']);
+        }
+        header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+        header('Access-Control-Allow-Credentials: true');
+        header('Vary: Origin');
+    }
+
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+        if ($allowedOrigin === '' || $origin === '' || !hash_equals($allowedOrigin, $origin)) {
+            respond(403, ['status' => 'error', 'message' => 'This website is not allowed to use the API.']);
+        }
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+        header('Access-Control-Max-Age: 600');
+        http_response_code(204);
+        exit;
+    }
+
     ini_set('session.use_strict_mode', '1');
+    $secureCookie = filter_var(getenv('STARK_COOKIE_SECURE') ?: 'false', FILTER_VALIDATE_BOOLEAN)
+        || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $sameSite = getenv('STARK_COOKIE_SAMESITE') ?: 'Lax';
+    if (!in_array($sameSite, ['Lax', 'Strict', 'None'], true)) {
+        $sameSite = 'Lax';
+    }
     session_set_cookie_params([
         'httponly' => true,
-        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-        'samesite' => 'Lax',
+        'secure' => $secureCookie,
+        'samesite' => $sameSite,
         'path' => '/',
     ]);
     session_start();
