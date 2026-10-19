@@ -23,6 +23,27 @@ async function requestApi(path, options) {
   }
 }
 
+function PasswordVisibilityToggle({ visible, onToggle }) {
+  const label = visible ? 'Hide passcode' : 'Show passcode';
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={label}
+      aria-pressed={visible}
+      title={label}
+      className="absolute inset-y-0 right-0 flex items-center px-3 text-orange-400 transition-colors hover:text-orange-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-300"
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.7">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12s3.5-7 9.75-7 9.75 7 9.75 7-3.5 7-9.75 7-9.75-7-9.75-7Z" />
+        <circle cx="12" cy="12" r="3" />
+        {visible && <path strokeLinecap="round" d="m4 4 16 16" />}
+      </svg>
+    </button>
+  );
+}
+
 function App() {
   // SECURE DEFAULT: Now starts on 'login' instead of 'dashboard'
   const [currentView, setCurrentView] = useState('login');
@@ -192,6 +213,7 @@ function App() {
   const LoginView = () => {
     const [loginData, setLoginData] = useState({ accessId: '', password: '' });
     const [loginMessage, setLoginMessage] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleInputChange = (e) => setLoginData({ ...loginData, [e.target.name]: e.target.value });
 
@@ -265,8 +287,11 @@ function App() {
             <input type="text" name="accessId" onChange={handleInputChange} placeholder="e.g. 2024-0192" className="w-full bg-black/60 border border-orange-500/40 rounded-none p-3 text-orange-50 focus:outline-none focus:border-orange-400 shadow-inner text-sm" />
           </div>
           <div>
-            <label className="block text-orange-400 text-xs mb-1 uppercase tracking-wider">Passcode</label>
-            <input type="password" name="password" onChange={handleInputChange} placeholder="••••••••" className="w-full bg-black/60 border border-orange-500/40 rounded-none p-3 text-orange-50 focus:outline-none focus:border-orange-400 shadow-inner text-sm" />
+            <label htmlFor="login-passcode" className="block text-orange-400 text-xs mb-1 uppercase tracking-wider">Passcode</label>
+            <div className="relative">
+              <input id="login-passcode" type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" onChange={handleInputChange} placeholder="••••••••" className="w-full bg-black/60 border border-orange-500/40 rounded-none p-3 pr-12 text-orange-50 focus:outline-none focus:border-orange-400 shadow-inner text-sm" />
+              <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} />
+            </div>
           </div>
           <button onClick={handleLogin} className="w-full mt-4 bg-orange-950/60 border border-orange-400 text-orange-400 hover:bg-orange-500 hover:text-black py-3 uppercase tracking-[0.15em] font-bold transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)]">
             Initialize Session
@@ -282,6 +307,7 @@ function App() {
   const RegisterView = () => {
     const [formData, setFormData] = useState({ fullName: '', accessId: '', course: '', year: '', age: '', email: '', location: '', password: '' });
     const [serverMessage, setServerMessage] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     
     const hasUpper = /[A-Z]/.test(formData.password);
     const hasNumber = /[0-9]/.test(formData.password);
@@ -372,8 +398,11 @@ function App() {
             </div>
             
             <div className="col-span-2 mt-2">
-              <label className="block text-orange-400 text-[10px] mb-1 uppercase tracking-wider">Secure Passcode</label>
-              <input type="password" name="password" onChange={handleInputChange} className="w-full bg-black/60 border border-orange-500/40 p-2 text-orange-50 focus:outline-none focus:border-orange-400" />
+              <label htmlFor="register-passcode" className="block text-orange-400 text-[10px] mb-1 uppercase tracking-wider">Secure Passcode</label>
+              <div className="relative">
+                <input id="register-passcode" type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password" onChange={handleInputChange} className="w-full bg-black/60 border border-orange-500/40 p-2 pr-12 text-orange-50 focus:outline-none focus:border-orange-400" />
+                <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} />
+              </div>
               
               <div className="flex gap-1 mt-2 h-1">
                 <div className={`w-1/4 ${strengthScore >= 1 ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]' : 'bg-gray-800'}`}></div>
