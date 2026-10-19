@@ -67,12 +67,27 @@ function db(): PDO
         return $pdo;
     }
 
-    $host = getenv('STARK_DB_HOST') ?: '127.0.0.1';
-    $port = getenv('STARK_DB_PORT') ?: '3306';
-    $name = getenv('STARK_DB_NAME') ?: 'enrollment_system';
-    $user = getenv('STARK_DB_USER') ?: 'root';
-    $password = getenv('STARK_DB_PASSWORD') ?: '';
-    $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+    $databaseUrl = trim(getenv('DATABASE_URL') ?: '');
+    if ($databaseUrl !== '') {
+        $parts = parse_url($databaseUrl);
+        if (!is_array($parts) || empty($parts['host']) || empty($parts['path'])) {
+            throw new RuntimeException('DATABASE_URL is not a valid PostgreSQL connection URL.');
+        }
+        $host = $parts['host'];
+        $port = (string)($parts['port'] ?? 5432);
+        $name = ltrim($parts['path'], '/');
+        $user = rawurldecode((string)($parts['user'] ?? ''));
+        $password = rawurldecode((string)($parts['pass'] ?? ''));
+        $dsn = "pgsql:host={$host};port={$port};dbname={$name};sslmode=require";
+    } else {
+        // Retain the XAMPP/MySQL fallback for local development.
+        $host = getenv('STARK_DB_HOST') ?: '127.0.0.1';
+        $port = getenv('STARK_DB_PORT') ?: '3306';
+        $name = getenv('STARK_DB_NAME') ?: 'enrollment_system';
+        $user = getenv('STARK_DB_USER') ?: 'root';
+        $password = getenv('STARK_DB_PASSWORD') ?: '';
+        $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+    }
 
     $pdo = new PDO($dsn, $user, $password, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

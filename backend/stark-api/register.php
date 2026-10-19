@@ -44,7 +44,7 @@ try {
     ]);
     respond(201, ['status' => 'success', 'message' => 'Student registered.']);
 } catch (PDOException $error) {
-    if ($error->getCode() === '23000') {
+    if (in_array((string)$error->getCode(), ['23000', '23505'], true)) {
         respond(409, ['status' => 'error', 'message' => 'That access ID or email is already registered.']);
     }
     handle_api_error($error);

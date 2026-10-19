@@ -36,9 +36,14 @@ try {
     }
 
     $pdo->beginTransaction();
-    $insert = $pdo->prepare('INSERT INTO enrollments (student_access_id, total_units, total_amount) VALUES (?, ?, ?)');
+    $isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
+    $insertSql = 'INSERT INTO enrollments (student_access_id, total_units, total_amount) VALUES (?, ?, ?)';
+    if ($isPostgres) {
+        $insertSql .= ' RETURNING id';
+    }
+    $insert = $pdo->prepare($insertSql);
     $insert->execute([$_SESSION['student_access_id'], $units, $units * 850]);
-    $enrollmentId = (int)$pdo->lastInsertId();
+    $enrollmentId = $isPostgres ? (int)$insert->fetchColumn() : (int)$pdo->lastInsertId();
     $itemInsert = $pdo->prepare('INSERT INTO enrollment_subjects (enrollment_id, subject_code) VALUES (?, ?)');
     foreach ($codes as $code) {
         $itemInsert->execute([$enrollmentId, $code]);

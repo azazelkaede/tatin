@@ -15,8 +15,12 @@ try {
         $query = $pdo->prepare('SELECT mime_type, image_data FROM student_photos WHERE student_access_id = ?');
         $query->execute([$accessId]);
         $photo = $query->fetch();
+        $imageData = $photo['image_data'] ?? null;
+        if (is_resource($imageData)) {
+            $imageData = stream_get_contents($imageData);
+        }
         $dataUrl = $photo
-            ? 'data:' . $photo['mime_type'] . ';base64,' . base64_encode($photo['image_data'])
+            ? 'data:' . $photo['mime_type'] . ';base64,' . base64_encode((string)$imageData)
             : null;
         respond(200, ['status' => 'success', 'dataUrl' => $dataUrl]);
     }
@@ -45,11 +49,15 @@ try {
         respond(500, ['status' => 'error', 'message' => 'Could not read the uploaded photo.']);
     }
 
-    $save = $pdo->prepare(
-        'INSERT INTO student_photos (student_access_id, mime_type, image_data)
-         VALUES (:access_id, :mime_type, :image_data)
-         ON DUPLICATE KEY UPDATE mime_type = VALUES(mime_type), image_data = VALUES(image_data)'
-    );
+    $upsertSql = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql'
+        ? 'INSERT INTO student_photos (student_access_id, mime_type, image_data, updated_at)
+           VALUES (:access_id, :mime_type, :image_data, CURRENT_TIMESTAMP)
+           ON CONFLICT (student_access_id) DO UPDATE
+           SET mime_type = EXCLUDED.mime_type, image_data = EXCLUDED.image_data, updated_at = CURRENT_TIMESTAMP'
+        : 'INSERT INTO student_photos (student_access_id, mime_type, image_data)
+           VALUES (:access_id, :mime_type, :image_data)
+           ON DUPLICATE KEY UPDATE mime_type = VALUES(mime_type), image_data = VALUES(image_data)';
+    $save = $pdo->prepare($upsertSql);
     $save->bindValue(':access_id', $accessId);
     $save->bindValue(':mime_type', $mimeType);
     $save->bindValue(':image_data', $imageData, PDO::PARAM_LOB);
