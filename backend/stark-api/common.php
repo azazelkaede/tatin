@@ -1,0 +1,60 @@
+<?php
+declare(strict_types=1);
+
+function api_init(): void
+{
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    ini_set('session.use_strict_mode', '1');
+    session_set_cookie_params([
+        'httponly' => true,
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'samesite' => 'Lax',
+        'path' => '/',
+    ]);
+    session_start();
+}
+
+function json_input(): array
+{
+    $data = json_decode(file_get_contents('php://input') ?: '', true);
+    if (!is_array($data)) {
+        respond(400, ['status' => 'error', 'message' => 'Invalid JSON request body.']);
+    }
+    return $data;
+}
+
+function respond(int $status, array $body): never
+{
+    http_response_code($status);
+    echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    exit;
+}
+
+function db(): PDO
+{
+    static $pdo = null;
+    if ($pdo instanceof PDO) {
+        return $pdo;
+    }
+
+    $host = getenv('STARK_DB_HOST') ?: '127.0.0.1';
+    $port = getenv('STARK_DB_PORT') ?: '3306';
+    $name = getenv('STARK_DB_NAME') ?: 'enrollment_system';
+    $user = getenv('STARK_DB_USER') ?: 'root';
+    $password = getenv('STARK_DB_PASSWORD') ?: '';
+    $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+
+    $pdo = new PDO($dsn, $user, $password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+    return $pdo;
+}
+
+function handle_api_error(Throwable $error): never
+{
+    error_log($error->__toString());
+    respond(500, ['status' => 'error', 'message' => 'Server or database error. Check the PHP error log.']);
+}
