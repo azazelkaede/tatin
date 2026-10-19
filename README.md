@@ -11,6 +11,12 @@ npm run dev
 
 To use login, registration, enrollment submission, and profile photos locally, start Apache and MySQL, import `backend/database.sql`, and follow `backend/README.md` to install the PHP API in XAMPP. The Vite development server proxies `/api` requests to that local API.
 
+## Deploy the frontend to Render
+
+The repository includes `render.yaml` for a free Render static site. In the Render Dashboard, create a Blueprint from this repository and deploy the `tatin-enrollment` static site. It builds with `npm ci && npm run build` and publishes `dist`. Render can redeploy the site after pushes to `main`.
+
+This deploys only the frontend: Render publishes `dist`, not the `backend/` PHP files. Login, registration, enrollment submissions, and photo storage still need a separately hosted PHP API. Do not enter real student information into the preview.
+
 ## Deploy the frontend to Vercel
 
 Import this repository in Vercel and set the project root to `enrollment-system` if the repository contains this folder as a subdirectory. Vercel detects Vite automatically; the build command is `npm run build` and the output directory is `dist`.
