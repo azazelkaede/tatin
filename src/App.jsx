@@ -44,6 +44,23 @@ function PasswordVisibilityToggle({ visible, onToggle }) {
   );
 }
 
+function LoadingSpinner() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4 animate-spin">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeLinecap="round" strokeWidth="3" />
+    </svg>
+  );
+}
+
+function SuccessMark() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+    </svg>
+  );
+}
+
 function App() {
   // SECURE DEFAULT: Now starts on 'login' instead of 'dashboard'
   const [currentView, setCurrentView] = useState('login');
@@ -214,11 +231,14 @@ function App() {
     const [loginData, setLoginData] = useState({ accessId: '', password: '' });
     const [loginMessage, setLoginMessage] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loginStatus, setLoginStatus] = useState('idle');
 
     const handleInputChange = (e) => setLoginData({ ...loginData, [e.target.name]: e.target.value });
 
     // SECURE LOGIN HANDLER
     const handleLogin = async () => {
+      if (loginStatus === 'loading' || loginStatus === 'success') return;
+      setLoginStatus('loading');
       setLoginMessage('Verifying credentials...');
       try {
         const { response, result } = await requestApi('/login.php', {
@@ -230,6 +250,7 @@ function App() {
         if (!response.ok) throw new Error(result.message || 'Login request failed.');
         
         if (result.status === 'success') {
+          setLoginStatus('success');
           // Store secure DB data into profile
           const userDBData = {
               name: result.userData.name.toUpperCase(),
@@ -256,9 +277,11 @@ function App() {
           setLoginMessage('Access Granted. Routing to Mainframe...');
           setTimeout(() => setCurrentView('dashboard'), 1500);
         } else {
+          setLoginStatus('error');
           setLoginMessage(`ERROR: ${result.message}`);
         }
       } catch (error) {
+        setLoginStatus('error');
         console.error('Login request failed:', error);
         setLoginMessage(`LOGIN FAILED: ${error.message || 'Could not reach the API. Check Apache and the browser console.'}`);
       }
@@ -278,7 +301,7 @@ function App() {
       <AuthContainer subtitle="WIT STUDENT LOG IN">
         <div className="space-y-5 font-mono">
           {loginMessage && (
-            <div className={`p-2 text-center text-xs border ${loginMessage.includes('ERROR') || loginMessage.includes('OFFLINE') ? 'border-red-500 text-red-400 bg-red-900/40' : 'border-orange-500 text-orange-400 bg-orange-900/40'}`}>
+            <div role="status" aria-live="polite" className={`p-2 text-center text-xs border ${loginStatus === 'error' ? 'border-red-500 text-red-400 bg-red-900/40' : loginStatus === 'success' ? 'border-emerald-500 text-emerald-300 bg-emerald-950/40' : 'border-orange-500 text-orange-400 bg-orange-900/40'}`}>
               {loginMessage}
             </div>
           )}
@@ -293,8 +316,16 @@ function App() {
               <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} />
             </div>
           </div>
-          <button onClick={handleLogin} className="w-full mt-4 bg-orange-950/60 border border-orange-400 text-orange-400 hover:bg-orange-500 hover:text-black py-3 uppercase tracking-[0.15em] font-bold transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)]">
-            Initialize Session
+          <button
+            onClick={handleLogin}
+            disabled={loginStatus === 'loading' || loginStatus === 'success'}
+            className={`w-full mt-4 border py-3 uppercase tracking-[0.15em] font-bold transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)] disabled:cursor-wait ${loginStatus === 'success' ? 'bg-emerald-950/50 border-emerald-400 text-emerald-300' : 'bg-orange-950/60 border-orange-400 text-orange-400 hover:bg-orange-500 hover:text-black disabled:opacity-80'}`}
+          >
+            <span className="flex items-center justify-center gap-2">
+              {loginStatus === 'loading' && <LoadingSpinner />}
+              {loginStatus === 'success' && <SuccessMark />}
+              {loginStatus === 'loading' ? 'Authenticating...' : loginStatus === 'success' ? 'Access Granted — Routing...' : 'Initialize Session'}
+            </span>
           </button>
           <button onClick={() => setCurrentView('register')} className="w-full text-xs text-orange-400 hover:text-orange-300 transition-colors tracking-widest mt-4">
             [ REQUEST REGISTER FORM ]
@@ -308,6 +339,7 @@ function App() {
     const [formData, setFormData] = useState({ fullName: '', accessId: '', course: '', year: '', age: '', email: '', location: '', password: '' });
     const [serverMessage, setServerMessage] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [registrationStatus, setRegistrationStatus] = useState('idle');
     
     const hasUpper = /[A-Z]/.test(formData.password);
     const hasNumber = /[0-9]/.test(formData.password);
@@ -320,7 +352,9 @@ function App() {
     const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
     const handleRegister = async () => {
-      if (!isPasswordValid) return; 
+      if (!isPasswordValid || registrationStatus === 'loading' || registrationStatus === 'success') return;
+      setRegistrationStatus('loading');
+      setServerMessage('Registering student profile...');
       
       try {
         const { response, result } = await requestApi('/register.php', {
@@ -331,12 +365,15 @@ function App() {
         });
         if (!response.ok) throw new Error(result.message || 'Registration request failed.');
         if (result.status === 'success') {
-          setServerMessage("CLEARANCE GRANTED.");
+          setRegistrationStatus('success');
+          setServerMessage('REGISTRATION COMPLETE — CLEARANCE GRANTED.');
           setTimeout(() => setCurrentView('login'), 2000);
         } else {
+          setRegistrationStatus('error');
           setServerMessage(`ERROR: ${result.message}`);
         }
       } catch (error) {
+        setRegistrationStatus('error');
         console.error('Registration request failed:', error);
         setServerMessage(`REGISTRATION FAILED: ${error.message || 'Could not reach the API. Check Apache and the browser console.'}`);
       }
@@ -359,7 +396,10 @@ function App() {
       <AuthContainer subtitle="Student Registration">
         <div className="space-y-4 font-mono text-xs">
           {serverMessage && (
-            <div className="p-2 text-center border border-orange-500 text-orange-400 bg-orange-900/40">{serverMessage}</div>
+            <div role="status" aria-live="polite" className={`p-2 text-center border ${registrationStatus === 'error' ? 'border-red-500 text-red-400 bg-red-900/40' : registrationStatus === 'success' ? 'border-emerald-500 text-emerald-300 bg-emerald-950/40' : 'border-orange-500 text-orange-400 bg-orange-900/40'}`}>
+              {registrationStatus === 'loading' && <LoadingSpinner />}
+              {serverMessage}
+            </div>
           )}
           
           <div className="grid grid-cols-2 gap-3">
@@ -422,10 +462,14 @@ function App() {
 
           <button 
             onClick={handleRegister} 
-            disabled={!isPasswordValid}
-            className={`w-full mt-4 py-3 uppercase tracking-[0.15em] font-bold transition-all ${isPasswordValid ? 'bg-orange-500/20 border border-orange-400 text-orange-400 hover:bg-orange-400 hover:text-black shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'bg-black/50 border border-gray-700 text-gray-600 cursor-not-allowed'}`}
+            disabled={!isPasswordValid || registrationStatus === 'loading' || registrationStatus === 'success'}
+            className={`w-full mt-4 py-3 uppercase tracking-[0.15em] font-bold transition-all disabled:cursor-wait ${registrationStatus === 'success' ? 'bg-emerald-950/50 border border-emerald-400 text-emerald-300' : isPasswordValid ? 'bg-orange-500/20 border border-orange-400 text-orange-400 hover:bg-orange-400 hover:text-black shadow-[0_0_15px_rgba(249,115,22,0.3)] disabled:opacity-80' : 'bg-black/50 border border-gray-700 text-gray-600 cursor-not-allowed'}`}
           >
-            {isPasswordValid ? 'Submit Credentials' : 'Await Protocol Match'}
+            <span className="flex items-center justify-center gap-2">
+              {registrationStatus === 'loading' && <LoadingSpinner />}
+              {registrationStatus === 'success' && <SuccessMark />}
+              {registrationStatus === 'loading' ? 'Registering...' : registrationStatus === 'success' ? 'Registration Complete' : isPasswordValid ? 'Submit Credentials' : 'Await Protocol Match'}
+            </span>
           </button>
           <p className="text-center text-[10px] text-gray-400 mt-2">
             <button onClick={() => setCurrentView('login')} className="text-orange-400 hover:text-orange-300 underline underline-offset-4 decoration-orange-500/30">Abort Registration</button>
